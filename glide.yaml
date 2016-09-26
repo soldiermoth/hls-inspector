@@ -1,0 +1,4 @@
+package: github.com/zencoder/tswatcher
+import:
+- package: github.com/grafov/m3u8
+  version: ^0.7.0
