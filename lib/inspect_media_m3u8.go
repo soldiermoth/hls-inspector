@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,7 +17,7 @@ import (
 )
 
 type MediaM3U8Inspector interface {
-	InspectSegments(*m3u8.MediaPlaylist) (string, error)
+	InspectSegments(*url.URL, *m3u8.MediaPlaylist) (string, error)
 }
 
 func NewMediaM3U8Inspector(segmentInspector SegmentInspector, workerCount int) MediaM3U8Inspector {
@@ -73,7 +74,7 @@ func writeTableColumns(w io.Writer, cols ...string) {
 	newline()
 }
 
-func (mmi *mediaM3U8Inspector) inspectAllSegments(segs []*m3u8.MediaSegment) ([]*SegmentInspection, error) {
+func (mmi *mediaM3U8Inspector) inspectAllSegments(mURL *url.URL, segs []*m3u8.MediaSegment) ([]*SegmentInspection, error) {
 	infos := make([]*SegmentInspection, len(segs))
 	jobs := make(chan segInspectJob, len(segs))
 	results := make(chan segInspectResult, len(segs))
@@ -87,7 +88,16 @@ func (mmi *mediaM3U8Inspector) inspectAllSegments(segs []*m3u8.MediaSegment) ([]
 					continue
 				}
 				log.Printf("Starting Segment #%d: %q", j.i, j.seg.URI)
-				result.info, result.err = mmi.segmentInspector.Inspect(j.seg.URI)
+				segURL, err := url.Parse(j.seg.URI)
+				if err != nil {
+					result.err = err
+					results <- result
+					continue
+				}
+				if mURL != nil && !segURL.IsAbs() {
+					segURL = mURL.ResolveReference(segURL)
+				}
+				result.info, result.err = mmi.segmentInspector.Inspect(segURL.String())
 				log.Printf("Finished Segment #%d: Info=%#v Error=%+v", j.i, result.info, result.err)
 				results <- result
 			}
@@ -110,7 +120,7 @@ func (mmi *mediaM3U8Inspector) inspectAllSegments(segs []*m3u8.MediaSegment) ([]
 	return infos, nil
 }
 
-func (mmi *mediaM3U8Inspector) InspectSegments(m *m3u8.MediaPlaylist) (string, error) {
+func (mmi *mediaM3U8Inspector) InspectSegments(mURL *url.URL, m *m3u8.MediaPlaylist) (string, error) {
 	sb := bytes.NewBuffer([]byte(""))
 	tw := tabwriter.NewWriter(sb, 5, 4, 2, ' ', tabwriter.TabIndent)
 
@@ -123,7 +133,7 @@ func (mmi *mediaM3U8Inspector) InspectSegments(m *m3u8.MediaPlaylist) (string, e
 		"Audio PTS", "Diff", "Cumulative Overlap",
 		"Video PTS", "Diff", "DTS",
 		"Writing Lib", "Delay to Video", "Color")
-	infos, err := mmi.inspectAllSegments(m.Segments)
+	infos, err := mmi.inspectAllSegments(mURL, m.Segments)
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +175,7 @@ func (mmi *mediaM3U8Inspector) InspectSegments(m *m3u8.MediaPlaylist) (string, e
 		if a := info.Ffprobe.Audio; a != nil {
 			if d, err := strconv.ParseFloat(a.Duration, 64); err == nil {
 				uniqueAudio = time.Duration(d * float64(time.Second))
-				if prevInfo != nil {
+				if prevInfo != nil && prevInfo.Audio != nil {
 					if pd, err := strconv.ParseFloat(prevInfo.Ffprobe.Audio.Duration, 64); err == nil {
 						overlap := time.Duration((float64(prevInfo.Audio.StartPTS)/90000.0 + pd - float64(info.Audio.StartPTS)/90000.0) * float64(time.Second))
 						if overlap > 0 {

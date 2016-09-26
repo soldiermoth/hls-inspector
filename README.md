@@ -10,6 +10,3 @@
 ```
 go run main.go -m3u8 'http://example.com/some.m3u8'
 ```
-
-## Notes
-* Currently only supports full URLs
