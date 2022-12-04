@@ -33,6 +33,12 @@ wget https://github.com/kynesim/tstools/archive/refs/heads/master.zip && \
     cd  tstools-master/ && make && make install
 ```
 
+## Install
+first clone hls-inspector and cd to hls-inspector then run:
+```
+go get
+```
+
 ## Usage
 ```
 go run main.go -m3u8 'http://example.com/some.m3u8'
