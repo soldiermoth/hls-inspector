@@ -3,7 +3,7 @@
 ## Validate HLS streams
 This script checks a HLS playlist for the following:
 
-- Parse and validate m3u8 play list and find related variants. (play list should parsable)
+- Parse and validate m3u8 play list and find related variants. (play list should be parsable)
 - Whether all .ts fragments can be downloaded for all quality levels
 - Whether all .ts fragments have video frames
 - Whether all .ts fragments has true encoding
@@ -34,12 +34,26 @@ wget https://github.com/kynesim/tstools/archive/refs/heads/master.zip && \
 ```
 
 ## Install
-first clone hls-inspector and cd to hls-inspector then run:
+1- download binary file and run it.
+for linux:
+```
+wget https://github.com/Mehrdad-Dadkhah/hls-inspector/tree/develop/bin/hls-inspector
+```
+
+```
+$hls-inspector -variant 0 -m3u8 'http://example.com/some.m3u8'
+```
+for help:
+```
+$hls-inspector
+```
+
+or
+2- first clone hls-inspector and cd to hls-inspector then run:
 ```
 go get
 ```
 
-## Usage
 ```
 go run main.go -m3u8 'http://example.com/some.m3u8'
 ```

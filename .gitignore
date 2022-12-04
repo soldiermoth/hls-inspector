@@ -24,7 +24,6 @@ _testmain.go
 .DS_Store
 
 .idea/
-bin/
 coverage/
 cuke-logs/
 apidoc/
